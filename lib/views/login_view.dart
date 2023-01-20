@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'package:todo_app/constants/routes.dart';
 
+import '../utilities/show_error_dialog.dart';
+
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
@@ -63,19 +65,36 @@ class _LoginViewState extends State<LoginView> {
                   email: email,
                   password: password,
                 );
+                final user = FirebaseAuth.instance.currentUser;
                 if (!mounted) return;
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  notesRoutes,
-                  (route) => false,
-                );
+                if (user?.emailVerified ?? false) {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    notesRoutes,
+                    (route) => false,
+                  );
+                } else {
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    verifyEmailRoute,
+                    (route) => false,
+                  );
+                }
+                if (!mounted) return;
               } on FirebaseAuthException catch (e) {
                 if (e.code == 'User-not-found') {
                   await showErrorDialog(context, 'User not found');
                 } else if (e.code == 'wrong password') {
                   await showErrorDialog(context, 'wrong password');
                 } else {
-                  await showErrorDialog(context, e.code);
+                  await showErrorDialog(
+                    context,
+                    'Error: ${e.code}',
+                  );
                 }
+              } catch (e) {
+                await showErrorDialog(
+                  context,
+                  e.toString(),
+                );
               }
             },
             child: const Text('Login'),
@@ -91,26 +110,4 @@ class _LoginViewState extends State<LoginView> {
       ),
     );
   }
-}
-
-Future<void> showErrorDialog(
-  BuildContext context,
-  String text,
-) {
-  return showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('An error occurred'),
-          content: Text(text),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Ok'),
-            ),
-          ],
-        );
-      });
 }

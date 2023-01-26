@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/services/auth/auth_service.dart';
 import 'package:todo_app/services/crud/notes_services.dart';
-import 'package:todo_app/views/notes/new_notes_view.dart';
 
 import '../../constants/routes.dart';
 import '../../enums/menu_action.dart';
@@ -26,11 +25,11 @@ class _NotesViewState extends State<NotesView> {
     super.initState();
   }
 
-  @override
-  void dispose() {
-    _notesService.close();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   _notesService.close();
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +86,25 @@ class _NotesViewState extends State<NotesView> {
                     switch (snapshot.connectionState) {
                       case ConnectionState.waiting:
                       case ConnectionState.active:
-                        return const Text('Waiting for text to load .. ');
+                        if (snapshot.hasData) {
+                          final allNotes = snapshot.data as List<DataBaseNotes>;
+                          return ListView.builder(
+                            itemBuilder: (context, index) {
+                              final notes = allNotes[index];
+                              return ListTile(
+                                title: Text(
+                                  notes.text,
+                                  maxLines: 1,
+                                  softWrap: true,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            },
+                            itemCount: allNotes.length,
+                          );
+                        } else {
+                          return const CircularProgressIndicator();
+                        }
                       default:
                         return const CircularProgressIndicator();
                     }

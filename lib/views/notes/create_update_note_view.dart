@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/services/auth/auth_service.dart';
+import 'package:todo_app/utilities/generic/get_argument.dart';
 
 import '../../services/crud/notes_services.dart';
 
-class NewNotesView extends StatefulWidget {
-  const NewNotesView({super.key});
+class CreateUpdateNoteView extends StatefulWidget {
+  const CreateUpdateNoteView({super.key});
 
   @override
-  State<NewNotesView> createState() => _NewNotesViewState();
+  State<CreateUpdateNoteView> createState() => _CreateUpdateNoteViewState();
 }
 
-class _NewNotesViewState extends State<NewNotesView> {
+class _CreateUpdateNoteViewState extends State<CreateUpdateNoteView> {
   DataBaseNotes? _notes;
   late final NotesService _notesService;
   late final TextEditingController _textEditingController;
@@ -21,7 +22,13 @@ class _NewNotesViewState extends State<NewNotesView> {
     super.initState();
   }
 
-  Future<DataBaseNotes> createNotes() async {
+  Future<DataBaseNotes> createOrGetExistingNote(BuildContext context) async {
+    final widgetNote = context.getArgument<DataBaseNotes>();
+    if (widgetNote != null) {
+      _notes = widgetNote;
+      _textEditingController.text = widgetNote.text;
+      return widgetNote;
+    }
     final existingNotes = _notes;
     if (existingNotes != null) {
       return existingNotes;
@@ -29,7 +36,9 @@ class _NewNotesViewState extends State<NewNotesView> {
     final currentUser = AuthService.firebase().currentUser!;
     final email = currentUser.email!;
     final owner = await _notesService.getUser(email: email);
-    return await _notesService.createNotes(owner: owner);
+    final newNotes = await _notesService.createNotes(owner: owner);
+    _notes = newNotes;
+    return newNotes;
   }
 
   void _deleteNoteIfEmpty() {
@@ -82,11 +91,10 @@ class _NewNotesViewState extends State<NewNotesView> {
         title: const Text('New notes'),
       ),
       body: FutureBuilder(
-        future: createNotes(),
+        future: createOrGetExistingNote(context),
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
             case ConnectionState.done:
-              _notes = snapshot.data as DataBaseNotes;
               _setupTextControllerListener();
               return TextField(
                 controller: _textEditingController,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/services/auth/auth_service.dart';
-import 'package:todo_app/services/crud/notes_services.dart';
+import 'package:todo_app/services/cloud/cloud_note.dart';
+import 'package:todo_app/services/cloud/firebase_cloud_storage.dart';
 import 'package:todo_app/views/notes/notes_list_view.dart';
 
 import '../../constants/routes.dart';
@@ -17,13 +18,12 @@ class NotesView extends StatefulWidget {
 }
 
 class _NotesViewState extends State<NotesView> {
-  String get userEmail => AuthService.firebase().currentUser!.email;
-  late final NotesService _notesService;
+  String get userId => AuthService.firebase().currentUser!.id;
+  late final FirebaseCloudStorage _notesService;
 
   @override
   void initState() {
-    _notesService = NotesService();
-    _notesService.open();
+    _notesService = FirebaseCloudStorage();
     super.initState();
   }
 
@@ -36,84 +36,77 @@ class _NotesViewState extends State<NotesView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leadingWidth: 0,
-        title: const Text('Your notes'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed(
-                createOrUpdateNoteRoute,
-              );
-            },
-            icon: const Icon(
-              Icons.add,
+        appBar: AppBar(
+          leadingWidth: 0,
+          title: const Text('Your notes'),
+          actions: [
+            IconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(
+                  createOrUpdateNoteRoute,
+                );
+              },
+              icon: const Icon(
+                Icons.add,
+              ),
             ),
-          ),
-          PopupMenuButton(
-            onSelected: (value) async {
-              switch (value) {
-                case MenuAction.logout:
-                  final shouldLogout = await showLogOutDialog(context);
-                  if (shouldLogout) {
-                    await AuthService.firebase().logOut();
-                    if (!mounted) return;
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      loginRoutes,
-                      (_) => false,
-                    );
-                  }
-                  break;
-              }
-            },
-            itemBuilder: (context) {
-              return [
-                const PopupMenuItem<MenuAction>(
-                  value: MenuAction.logout,
-                  child: Text('Log out'),
-                ),
-              ];
-            },
-          )
-        ],
-      ),
-      body: FutureBuilder(
-        future: _notesService.getOrCreateUser(email: userEmail),
-        builder: (BuildContext context, AsyncSnapshot snapshot) {
-          switch (snapshot.connectionState) {
-            case ConnectionState.done:
-              return StreamBuilder(
-                  stream: _notesService.allNotes,
-                  builder: (context, snapshot) {
-                    switch (snapshot.connectionState) {
-                      case ConnectionState.waiting:
-                      case ConnectionState.active:
-                        if (snapshot.hasData) {
-                          final allNotes = snapshot.data as List<DataBaseNotes>;
-                          return NotesListView(
-                            notes: allNotes,
-                            onDeleteNotes: (note) async {
-                              await _notesService.deleteNotes(id: note.id);
-                            },
-                            onTap: (DataBaseNotes note) {
-                              Navigator.of(context).pushNamed(
-                                createOrUpdateNoteRoute,
-                                arguments: note,
-                              );
-                            },
-                          );
-                        } else {
-                          return const CircularProgressIndicator();
-                        }
-                      default:
-                        return const CircularProgressIndicator();
+            PopupMenuButton(
+              onSelected: (value) async {
+                switch (value) {
+                  case MenuAction.logout:
+                    final shouldLogout = await showLogOutDialog(context);
+                    if (shouldLogout) {
+                      await AuthService.firebase().logOut();
+                      if (!mounted) return;
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        loginRoutes,
+                        (_) => false,
+                      );
                     }
-                  });
-            default:
-              return const CircularProgressIndicator();
-          }
-        },
-      ),
-    );
+                    break;
+                }
+              },
+              itemBuilder: (context) {
+                return [
+                  const PopupMenuItem<MenuAction>(
+                    value: MenuAction.logout,
+                    child: Text('Log out'),
+                  ),
+                ];
+              },
+            )
+          ],
+        ),
+        body: StreamBuilder(
+            stream: _notesService.allNotes(
+              ownerUserId: userId,
+            ),
+            builder: (context, snapshot) {
+              switch (snapshot.connectionState) {
+                case ConnectionState.waiting:
+                case ConnectionState.active:
+                  if (snapshot.hasData) {
+                    final allNotes = snapshot.data as Iterable<CloudNotes>;
+                    return NotesListView(
+                      notes: allNotes,
+                      onDeleteNotes: (note) async {
+                        await _notesService.deleteNotes(
+                          documentId: note.documentId,
+                        );
+                      },
+                      onTap: (CloudNotes note) {
+                        Navigator.of(context).pushNamed(
+                          createOrUpdateNoteRoute,
+                          arguments: note,
+                        );
+                      },
+                    );
+                  } else {
+                    return const CircularProgressIndicator();
+                  }
+                default:
+                  return const CircularProgressIndicator();
+              }
+            }));
   }
 }

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:todo_app/services/cloud/cloud_storage_contants.dart';
+import 'package:todo_app/services/cloud/cloud_storage_constants.dart';
 
 @immutable
 class CloudNotes {
@@ -16,6 +16,6 @@ class CloudNotes {
 
   CloudNotes.fromSnapShot(QueryDocumentSnapshot<Map<String, dynamic>> snapshot)
       : documentId = snapshot.id,
-        ownerId = snapshot.data()[localOwnerUserIdFieldName],
+        ownerId = snapshot.data()[ownerUserIdFieldName],
         text = snapshot.data()[textFieldName] as String;
 }

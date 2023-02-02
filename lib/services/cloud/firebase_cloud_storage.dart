@@ -5,11 +5,17 @@ import 'package:todo_app/services/cloud/cloud_storage_conStants.dart';
 
 class FirebaseCloudStorage {
   final notes = FirebaseFirestore.instance.collection('notes');
-  void createNewNotes({required String ownerUserId}) async {
-    await notes.add({
+  Future<CloudNotes> createNewNotes({required String ownerUserId}) async {
+    final documents = await notes.add({
       ownerUserIdFieldName: ownerUserId,
       textFieldName: '',
     });
+    final fetchNote = await documents.get();
+    return CloudNotes(
+      documentId: fetchNote.id,
+      ownerId: ownerUserId,
+      text: '',
+    );
   }
 
   Future<void> deleteNotes({required String documentId}) async {
@@ -46,13 +52,9 @@ class FirebaseCloudStorage {
             isEqualTo: ownerUserId,
           )
           .get()
-          .then((value) => value.docs.map((doc) {
-                return CloudNotes(
-                  documentId: doc.id,
-                  ownerId: doc.data()[ownerUserIdFieldName] as String,
-                  text: doc.data()[textFieldName] as String,
-                );
-              }));
+          .then(
+            (value) => value.docs.map((doc) => CloudNotes.fromSnapShot(doc)),
+          );
     } catch (e) {
       throw CouldNotGetAllNotesException();
     }
